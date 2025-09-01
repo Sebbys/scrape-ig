@@ -1,7 +1,33 @@
 const fs = require("fs");
 const path = require("path");
 const puppeteer = require("puppeteer-extra");
-const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+  // Best-effort cookie banner
+  await page.evaluate(() => {
+    const texts = ["allow all","accept all","accept","only allow essential","Izinkan semua"];
+    const btn = Array.from(document.querySelectorAll("button")).find(b =>
+      texts.some(t => (b.textContent || "").toLowerCase().includes(t)));
+    if (btn) btn.click();
+  }).catch(()=>{});  
+
+  await sleep(2000); // Wait for cookie banner to process
+
+  // Wait for login form to load
+  await page.waitForSelector('form', { timeout: 60000 });
+
+  // Retry waiting for username input
+  let usernameInput = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      usernameInput = await page.waitForSelector('input[name="username"]', { visible: true, timeout: 10000 });
+      break;
+    } catch (error) {
+      console.log(`Attempt ${attempt + 1} to find username input failed: ${error.message}`);
+      if (attempt === 4) throw error;
+      await page.reload({ waitUntil: 'networkidle2' });
+    }
+  }
+
+  await usernameInput.type(IG_USER, { delay: 45 });lthPlugin = require("puppeteer-extra-plugin-stealth");
 require("dotenv").config();
 
 puppeteer.use(StealthPlugin());
