@@ -1,4 +1,8 @@
 {
+  "type": "commonjs",
+  "scripts": {
+    "start": "node scrape-instagram.js"
+  },
   "dependencies": {
     "dotenv": "^17.2.1",
     "puppeteer": "^24.17.1",
