@@ -27,7 +27,7 @@ jobs:
         run: npm install
 
       - name: Run scraper
-        run: node scrape-instagram.js telkomuniversity_purwokerto
+        run: node scrape-hashtag-posts.js #TelyutizenMuda #BintangMudaCakrawala #TODAYS2025 #TelkomOrientationDays2025 #PKKMBTELU #PKKMB2025 #telkomuniversitypurwokerto 50
         env:
           IG_USER: ${{ secrets.IG_USER }}
           IG_PASS: ${{ secrets.IG_PASS }}
@@ -41,6 +41,7 @@ jobs:
           path: |
             logs/**
             data.csv
+            hashtag-posts.csv
           if-no-files-found: warn
           retention-days: 14
 
