@@ -469,16 +469,27 @@ async function fallbackFromDOM(page, profileUrl) {
 }
 
 async function scrapeProfile(page, target) {
+  const isHashtag = target.startsWith('#');
   const isUrl = /^https?:\/\//i.test(target);
-  const username = isUrl ? new URL(target).pathname.split("/").filter(Boolean)[0] : target.replace(/^@/,"");
-  const url = isUrl ? target : `https://www.instagram.com/${username}/`;
+  let username, url;
+  if (isHashtag) {
+    const hashtag = target.slice(1);
+    url = `https://www.instagram.com/explore/tags/${hashtag}/`;
+    username = hashtag;
+  } else {
+    username = isUrl ? new URL(target).pathname.split("/").filter(Boolean)[0] : target.replace(/^@/,"");
+    url = isUrl ? target : `https://www.instagram.com/${username}/`;
+  }
 
-  // Visit the profile first (keeps cookies/session warm)
+  // Visit the page first (keeps cookies/session warm)
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
   await acceptCookies(page);
 
-  // PRIMARY: Web JSON
-  const api = await fetchProfileJSON(page, username);
+  // PRIMARY: Web JSON (only for profiles, not hashtags)
+  let api = { ok: false };
+  if (!isHashtag) {
+    api = await fetchProfileJSON(page, username);
+  }
   if (api.ok) {
     const result = { url, posts: api.posts ?? null, followers: api.followers ?? null, following: api.following ?? null, source: "api" };
     // Also write a minimal DOM log to help future debugging
@@ -490,8 +501,8 @@ async function scrapeProfile(page, target) {
   // FALLBACK: DOM/og
   const fb = await fallbackFromDOM(page, url);
   const posts = pickMorePrecise(fb.dom.posts, expandCompact(fb.og.ogPosts));
-  const followers = pickMorePrecise(fb.dom.followers, expandCompact(fb.og.ogFollowers));
-  const following = pickMorePrecise(fb.dom.following, expandCompact(fb.og.ogFollowing));
+  const followers = isHashtag ? null : pickMorePrecise(fb.dom.followers, expandCompact(fb.og.ogFollowers));
+  const following = isHashtag ? null : pickMorePrecise(fb.dom.following, expandCompact(fb.og.ogFollowing));
   const result = { url, posts, followers, following, source: "dom/og" };
   writeLogFile(username, { ...result, debug: fb.debug });
   return result;
@@ -500,7 +511,7 @@ async function scrapeProfile(page, target) {
 (async () => {
   const targets = process.argv.slice(2);
   if (!targets.length) {
-    console.error("Usage: node scrape-ig-api.js <username|url> [more_usernames...]");
+    console.error("Usage: node scrape-instagram.js <username|#hashtag|url> [more_targets...]");
     process.exit(1);
   }
 
